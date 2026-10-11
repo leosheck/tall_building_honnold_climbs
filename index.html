@@ -1,0 +1,639 @@
+<!doctype html><html lang="en"><head><title>Skyline Scale</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one tall true-to-scale skyline strip, with a detail sheet and climb log beneath it. */
+:root {
+  --bg: #EDF1F5;
+  --sky: #DCE6EF;
+  --panel: #F8FAFC;
+  --ink: #15202C;
+  --muted: #586776;
+  --line: #C6D0DA;
+  --sil: #33475C;
+  --rock: #9A8468;
+  --accent: #D4461C;
+  --climb: #23795A;
+  --font-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1520; --sky: #142236; --panel: #131E2C; --ink: #E5EBF1; --muted: #93A2B2;
+    --line: #2A3B4F; --sil: #6D829B; --rock: #B29C80; --accent: #FF6B3E; --climb: #5CC49A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1520; --sky: #142236; --panel: #131E2C; --ink: #E5EBF1; --muted: #93A2B2;
+  --line: #2A3B4F; --sil: #6D829B; --rock: #B29C80; --accent: #FF6B3E; --climb: #5CC49A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(2.6rem, 6vw, 4.2rem); line-height: .95; margin: 0; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; }
+h2 { font-family: var(--font-display); font-weight: 800; font-size: 1.9rem; text-transform: uppercase; letter-spacing: .02em; margin: 0; line-height: 1; }
+.label { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+.ctl { display: grid; gap: 6px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 .85rem var(--font-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip:focus-visible, select:focus-visible, .slot:focus-visible, .climb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: 500 .85rem var(--font-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+
+/* Chart */
+.chart-card { border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(to bottom, var(--sky), var(--bg) 85%); overflow: hidden; }
+.chart-scroll { overflow-x: auto; overflow-y: hidden; }
+svg#chart { display: block; }
+.grid line { stroke: var(--line); stroke-width: 1; }
+.grid text, .axis-unit { fill: var(--muted); font: 10.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+.ground { stroke: var(--ink); stroke-width: 1.5; }
+.slot { cursor: pointer; outline: none; }
+.slot .hit { fill: transparent; }
+.slot:hover .hit { fill: var(--ink); fill-opacity: .04; }
+.shape { fill: var(--sil); transition: fill .15s; }
+.shape.rock { fill: var(--rock); }
+.slot.honnold .shape { fill: var(--climb); }
+.slot.sel .shape { fill: var(--accent); }
+.planned { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.slot.sel .planned { stroke: var(--accent); }
+.cut { fill: var(--bg); }
+.hlabel { fill: var(--ink); font: 500 10.5px var(--font-mono); font-variant-numeric: tabular-nums; text-anchor: middle; }
+.nlabel { fill: var(--ink); font: 600 11px var(--font-body); text-anchor: middle; }
+.slot.sel .nlabel, .slot.sel .hlabel { fill: var(--accent); }
+.climb-tag { fill: var(--climb); font: 500 9.5px var(--font-mono); text-anchor: middle; letter-spacing: .06em; }
+.reflabel { fill: var(--accent); font: 500 10.5px var(--font-mono); }
+.refline { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 6 4; opacity: .8; }
+.beacon { fill: #E8301C; }
+@media (prefers-reduced-motion: no-preference) {
+  .beacon { animation: blink 2.4s steps(1) infinite; }
+  @keyframes blink { 0%, 60% { opacity: 1 } 61%, 100% { opacity: .2 } }
+}
+.chart-foot { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); background: var(--panel); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+/* Detail */
+.detail { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 760px) { .detail { grid-template-columns: minmax(0, 1fr); } }
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.dname { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: .95; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: .88rem; }
+.pill { font: 500 .72rem var(--font-mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pill.climb { color: var(--climb); border-color: var(--climb); }
+.pill.build { color: var(--accent); border-color: var(--accent); }
+.bignum { font-family: var(--font-display); font-weight: 800; font-size: 3.6rem; line-height: .9; font-variant-numeric: tabular-nums; }
+.bignum small { font-family: var(--font-mono); font-weight: 400; font-size: .9rem; color: var(--muted); margin-left: 8px; }
+ul.facts { margin: 0; padding-left: 1.1em; display: grid; gap: 7px; max-width: 70ch; }
+ul.facts li::marker { color: var(--accent); }
+.stat-rows { display: grid; gap: 0; }
+.row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.row:last-child { border-bottom: 0; }
+.row span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.note { font-size: .82rem; color: var(--muted); margin: 0; }
+.stack { display: flex; flex-wrap: wrap; gap: 3px; align-items: end; min-height: 34px; }
+.stack i { display: block; width: 8px; height: 30px; background: var(--sil); border-radius: 1px 1px 0 0; }
+.stack i.part { background: linear-gradient(to top, var(--sil) var(--p), transparent var(--p)); outline: 1px dashed var(--line); outline-offset: -1px; }
+
+/* Climbs */
+.climbs { display: grid; gap: 16px; }
+.climb-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 820px) { .climb-grid { grid-template-columns: minmax(0, 1fr); } }
+.climb { text-align: left; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; cursor: pointer; align-content: start; }
+.climb:hover { border-color: var(--climb); }
+.climb h3 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase; line-height: 1; }
+.climb p { margin: 0; font-size: .88rem; color: var(--muted); }
+.speed { display: grid; gap: 4px; }
+.bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar b { display: block; height: 100%; background: var(--climb); border-radius: 4px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: .86rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+footer { font-size: .8rem; color: var(--muted); display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 16px; }
+footer a { color: var(--muted); }
+footer ul { margin: 0; padding-left: 1.1em; display: flex; flex-wrap: wrap; gap: 2px 22px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="label">True-to-scale height comparison</span>
+    <h1>Skyline Scale</h1>
+    <p class="lede">Tall buildings, towers and rock walls drawn on one vertical scale. Select any structure to see its height, history and how long Alex Honnold would take to climb it at his Taipei 101 pace.</p>
+  </header>
+
+  <section class="controls" aria-label="Chart controls">
+    <div class="ctl">
+      <span class="label" id="lbl-show">Show</span>
+      <div class="chips" role="group" aria-labelledby="lbl-show" id="filters"></div>
+    </div>
+    <div class="ctl">
+      <span class="label" id="lbl-units">Units</span>
+      <div class="chips" role="group" aria-labelledby="lbl-units" id="units"></div>
+    </div>
+    <div class="ctl">
+      <label class="label" for="sort">Order</label>
+      <select id="sort">
+        <option value="asc" selected>Shortest first</option>
+        <option value="desc">Tallest first</option>
+        <option value="year">Oldest first</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label class="label" for="ref">Reference line</label>
+      <select id="ref"></select>
+    </div>
+  </section>
+
+  <section class="chart-card" aria-label="Height chart">
+    <div class="chart-scroll" id="scroller"><svg id="chart" role="img" aria-label="Silhouettes of structures drawn to the same vertical scale"></svg></div>
+    <div class="chart-foot">
+      <span class="key"><i class="sw" style="background:var(--sil)"></i>Building or tower</span>
+      <span class="key"><i class="sw" style="border:1.2px dashed var(--muted)"></i>Planned, under construction</span>
+      <span class="key"><i class="sw" style="background:var(--climb)"></i>Free soloed by Alex Honnold (building or rock wall)</span>
+      <span>Scroll the chart sideways to see every structure. Rock walls show the height of the climbed face, not elevation above sea level.</span>
+    </div>
+  </section>
+
+  <section class="detail" id="detail" aria-live="polite"></section>
+
+  <section class="climbs" aria-labelledby="climbs-h">
+    <div style="display:grid;gap:6px">
+      <span class="label">Climbs without ropes</span>
+      <h2 id="climbs-h">Alex Honnold's free solos</h2>
+      <p class="lede">A free solo is a climb with no rope or protection. Times below are for the full ascent. Speed is the vertical height gained per minute, so it is approximate for rock routes that wander across the face.</p>
+    </div>
+    <div class="climb-grid" id="climbs"></div>
+  </section>
+
+  <footer>
+    <span>Heights are architectural heights (including spires, excluding antennas added later) as listed by the Council on Tall Buildings and Urban Habitat and Wikipedia, checked October 2026. Jeddah Tower figures are from August 2026 reporting.</span>
+    <ul>
+      <li><a href="https://en.wikipedia.org/wiki/List_of_tallest_buildings" target="_blank" rel="noopener">List of tallest buildings</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Sky_Tower_(Auckland)" target="_blank" rel="noopener">Sky Tower (Auckland)</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Auckland" target="_blank" rel="noopener">Tallest buildings in Auckland</a></li>
+      <li><a href="https://www.nbcnews.com/news/us-news/alex-honnolds-free-solo-climb-taipei-101-skyscraper-rcna255706" target="_blank" rel="noopener">NBC News: Honnold climbs Taipei 101</a></li>
+      <li><a href="https://lib.dogonews.com/library/wa-state/news/2026/1/26/alex-honnold-free-solos-taipei-101-in-record-time" target="_blank" rel="noopener">DOGOnews: Taipei 101 in record time</a></li>
+      <li><a href="https://thenationalnews.com/news/uae/2026/08/09/on-the-rise-jeddah-tower-soars-past-burj-khalifas-midpoint" target="_blank" rel="noopener">The National: Jeddah Tower progress</a></li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const FT = 3.28084;
+  const PACE = 508 / 91; // metres per minute, Honnold on Taipei 101
+
+  // shape: s = silhouette type, o = options
+  const DATA = [
+    { id: "jeddah", name: "Jeddah Tower", label: ["Jeddah", "Tower"], h: 1000, built: 430, approxPlus: true, city: "Jeddah, Saudi Arabia", year: 2028, yearText: "Planned 2028", cat: "building", floors: 167,
+      s: "spire", o: { n: 1, bf: .82, hw0: .44, hw1: .1, taper: true },
+      facts: [
+        "Under construction. It passed 100 floors in mid 2026 and was above 430 m with 107 floors complete by August 2026.",
+        "Planned to exceed 1,000 m with 167 floors, which would make it the first building more than one kilometre tall. The exact final height has not been released.",
+        "Work stopped at 63 floors for several years and restarted in 2025. Completion is targeted for 2028."
+      ] },
+    { id: "burj", name: "Burj Khalifa", label: ["Burj", "Khalifa"], h: 828, city: "Dubai, United Arab Emirates", year: 2010, cat: "building", floors: 163,
+      s: "spire", o: { n: 6, bf: .8, hw0: .46, hw1: .1 },
+      facts: [
+        "The tallest building in the world since it opened in January 2010.",
+        "It has 163 floors above ground. The top section above the highest floor is mostly spire.",
+        "French climber Alain Robert scaled it in 2011. The authorities required him to use ropes, and the climb took about six hours.",
+        "Tom Cruise filmed stunts on its glass exterior in 2011 for a Mission: Impossible film."
+      ] },
+    { id: "merdeka", name: "Merdeka 118", label: ["Merdeka", "118"], h: 678.9, city: "Kuala Lumpur, Malaysia", year: 2023, cat: "building", floors: 118,
+      s: "spire", o: { n: 3, bf: .74, hw0: .4, hw1: .18, taper: true },
+      facts: [
+        "The second tallest building in the world.",
+        "Merdeka means independence. The tower stands beside Stadium Merdeka, where Malaysia's independence was declared in 1957.",
+        "Its faceted glass exterior draws on patterns from traditional Malaysian art and craft."
+      ] },
+    { id: "shanghai", name: "Shanghai Tower", label: ["Shanghai", "Tower"], h: 632, city: "Shanghai, China", year: 2015, cat: "building", floors: 128,
+      s: "twist", o: {},
+      facts: [
+        "The tallest building in China.",
+        "The outer skin rotates about 120 degrees from bottom to top. Engineers found the twist reduced wind loads on the building by roughly a quarter.",
+        "Its fastest elevators travel at about 20.5 m per second, around 74 km/h."
+      ] },
+    { id: "clock", name: "Makkah Royal Clock Tower", label: ["Makkah", "Clock Tower"], h: 601, city: "Mecca, Saudi Arabia", year: 2012, cat: "building", floors: 120,
+      s: "clock", o: {},
+      facts: [
+        "Part of the Abraj Al-Bait complex beside the Grand Mosque.",
+        "Its four clock faces are 43 m across, the largest clock faces in the world."
+      ] },
+    { id: "pingan", name: "Ping An Finance Centre", label: ["Ping An", "Finance Ctr"], h: 599.1, city: "Shenzhen, China", year: 2017, cat: "building", floors: 115,
+      s: "spire", o: { n: 2, bf: .97, hw0: .38, hw1: .26, taper: true },
+      facts: [
+        "It was designed with a spire that would have taken it to about 660 m. The spire was dropped over concerns about aircraft flight paths.",
+        "Over 1,700 tonnes of stainless steel cover its exterior."
+      ] },
+    { id: "cn", name: "CN Tower", label: ["CN", "Tower"], h: 553.3, city: "Toronto, Canada", year: 1976, cat: "tower",
+      s: "needle", o: { pod: [.6, .66], pod2: .8 },
+      facts: [
+        "The tallest freestanding structure in the world from 1976 until 2007, when Burj Khalifa overtook it during construction.",
+        "The EdgeWalk lets visitors, attached by harness, walk around the outside of the main pod 356 m above the ground without holding on."
+      ] },
+    { id: "owtc", name: "One World Trade Center", label: ["One World", "Trade Ctr"], h: 541.3, city: "New York City, United States", year: 2014, cat: "building", floors: 94,
+      s: "spire", o: { n: 1, bf: .76, hw0: .36, hw1: .16, taper: true },
+      facts: [
+        "Its height of 1,776 feet refers to 1776, the year of the United States Declaration of Independence.",
+        "The tallest building in the Western Hemisphere."
+      ] },
+    { id: "taipei", name: "Taipei 101", label: ["Taipei", "101"], h: 508, city: "Taipei, Taiwan", year: 2004, cat: "building", floors: 101, honnold: true,
+      s: "pagoda", o: {},
+      facts: [
+        "Alex Honnold climbed it without a rope on 25 January 2026, reaching the top in 1 hour 31 minutes. The climb was shown live on Netflix as Skyscraper Live.",
+        "The hardest part was the middle section, 64 floors of eight outward-flaring segments that form overhanging ledges. Strong wind near the spire forced him to move slowly at the top.",
+        "Alain Robert, the only person to reach the top before Honnold, climbed it in 2004 using ropes. Honnold was about twice as fast.",
+        "The world's tallest building from 2004 until 2010.",
+        "A 660-tonne steel ball hangs inside near the top. It swings against the building's motion to reduce sway from typhoons and earthquakes.",
+        "The design is based on a bamboo stalk: eight segments of eight floors each. Eight is considered a lucky number in Chinese culture."
+      ] },
+    { id: "petronas", name: "Petronas Towers", label: ["Petronas", "Towers"], h: 451.9, city: "Kuala Lumpur, Malaysia", year: 1998, cat: "building", floors: 88,
+      s: "twin", o: {},
+      facts: [
+        "The world's tallest buildings from 1998 until Taipei 101 opened in 2004.",
+        "A two-level skybridge links the twin towers at the 41st and 42nd floors, about 170 m above the street."
+      ] },
+    { id: "empire", name: "Empire State Building", label: ["Empire", "State"], h: 443.2, city: "New York City, United States", year: 1931, cat: "building", floors: 102,
+      s: "spire", o: { n: 4, bf: .84, hw0: .4, hw1: .1 },
+      facts: [
+        "Built in about 410 days during the Great Depression.",
+        "The world's tallest building from 1931 until 1970. The roof is at 381 m; the mast takes it to 443 m.",
+        "The mast was originally planned as a mooring point for airships."
+      ] },
+    { id: "willis", name: "Willis Tower", label: ["Willis", "Tower"], h: 442.1, city: "Chicago, United States", year: 1974, cat: "building", floors: 108,
+      s: "spire", o: { n: 3, bf: .95, hw0: .4, hw1: .2 },
+      facts: [
+        "The world's tallest building from 1974 until 1998. It was called the Sears Tower until 2009.",
+        "The Ledge is a set of glass boxes that stick out from the 103rd floor, 412 m above the street."
+      ] },
+    { id: "eiffel", name: "Eiffel Tower", label: ["Eiffel", "Tower"], h: 330, city: "Paris, France", year: 1889, cat: "tower",
+      s: "lattice", o: {},
+      facts: [
+        "The tallest structure built by people from 1889 until 1930.",
+        "A new antenna added in 2022 raised it to 330 m, which puts it about 2 m above the Sky Tower.",
+        "The iron expands in summer heat, making it up to about 15 cm taller.",
+        "It was meant to be taken down after 20 years. Its use as a radio antenna helped save it."
+      ] },
+    { id: "sky", name: "Sky Tower", label: ["Sky Tower", "Auckland"], h: 328, city: "Auckland, New Zealand", year: 1997, cat: "tower",
+      s: "needle", o: { pod: [.57, .68], pod2: .0 },
+      facts: [
+        "The tallest freestanding structure in New Zealand, opened on 3 August 1997.",
+        "SkyJump drops people 192 m from the observation level at up to 85 km/h, on a guide wire that keeps them clear of the tower in gusts.",
+        "Built to withstand winds over 200 km/h, when it can sway up to 1 m, and a magnitude 8 earthquake within 20 km.",
+        "It has 1,267 steps. Firefighters race up 1,108 of them each year in a charity stair climb.",
+        "The highest public deck, the Sky Deck, is at 220 m, with views up to 82 km on a clear day.",
+        "There is no public record of Alex Honnold climbing it."
+      ] },
+    { id: "pwc", name: "PwC Tower, Commercial Bay", label: ["PwC Tower", "Auckland"], h: 180.1, city: "Auckland, New Zealand", year: 2020, cat: "building", floors: 41,
+      s: "spire", o: { n: 1, bf: 1, hw0: .3, hw1: .3 },
+      facts: [
+        "The tallest building in New Zealand, with 41 floors.",
+        "It is just over half the height of the Sky Tower, which stands a few streets away.",
+        "The Sky Tower is taller, but it is a tower rather than a building with usable floors, so it is ranked separately."
+      ] },
+    { id: "pyramid", name: "Great Pyramid of Giza", label: ["Great", "Pyramid"], h: 146.6, city: "Giza, Egypt", year: -2560, yearText: "Around 2560 BC", cat: "tower",
+      s: "pyramid", o: {}, wide: 1.4,
+      facts: [
+        "The tallest structure built by people for about 3,800 years.",
+        "It was 146.6 m tall when finished. It is now about 138.5 m because the smooth outer casing stones were removed over the centuries."
+      ] },
+    { id: "elcap", name: "El Capitan", label: ["El Capitan", "Yosemite"], h: 914, approx: true, city: "Yosemite National Park, California, United States", year: 2017, yearText: "Free soloed 2017", cat: "rock", honnold: true,
+      s: "elcap", o: {}, wide: 1.8,
+      facts: [
+        "A granite wall that rises about 900 m (3,000 ft) from the valley floor, taller than Burj Khalifa.",
+        "Alex Honnold climbed it without a rope on 3 June 2017 by the Freerider route, in 3 hours 56 minutes.",
+        "The climb was filmed for Free Solo, which won the Academy Award for Best Documentary Feature in 2019.",
+        "Most climbers take three to five days to climb El Capitan with ropes, sleeping on ledges or hanging tents on the wall."
+      ] },
+    { id: "halfdome", name: "Half Dome", label: ["Half Dome", "NW Face"], h: 610, approx: true, city: "Yosemite National Park, California, United States", year: 2008, yearText: "Free soloed 2008", cat: "rock", honnold: true,
+      s: "dome", o: {}, wide: 1.6,
+      facts: [
+        "Its Regular Northwest Face route climbs about 610 m (2,000 ft) of near-vertical granite.",
+        "Alex Honnold climbed it without a rope in September 2008, in about 2 hours 50 minutes. It was one of the climbs that first made him widely known.",
+        "The summit is 2,694 m above sea level."
+      ] }
+  ];
+  const byId = Object.fromEntries(DATA.map(d => [d.id, d]));
+
+  const CLIMBS = [
+    { id: "taipei", title: "Taipei 101", when: "25 January 2026", route: "Building exterior, 101 floors", h: 508, min: 91, note: "Shown live on Netflix. About twice as fast as the only earlier ascent, by Alain Robert with ropes in 2004." },
+    { id: "elcap", title: "El Capitan", when: "3 June 2017", route: "Freerider route", h: 914, min: 236, note: "Filmed for the Oscar-winning documentary Free Solo." },
+    { id: "halfdome", title: "Half Dome", when: "September 2008", route: "Regular Northwest Face", h: 610, min: 170, note: "An early solo that brought him wide attention among climbers." }
+  ];
+
+  const FILTERS = [
+    { id: "all", text: "Everything", test: () => true },
+    { id: "building", text: "Skyscrapers", test: d => d.cat === "building" },
+    { id: "tower", text: "Towers and landmarks", test: d => d.cat === "tower" },
+    { id: "rock", text: "Rock walls", test: d => d.cat === "rock" },
+    { id: "honnold", text: "Honnold climbs", test: d => d.honnold },
+    { id: "nz", text: "Featured trio", test: d => ["sky", "taipei", "elcap"].includes(d.id) }
+  ];
+
+  const state = { filter: "all", units: "m", sort: "asc", ref: "sky", sel: "sky" };
+  try { const u = localStorage.getItem("skyline-units"); if (u === "m" || u === "ft") state.units = u; } catch (e) {}
+
+  const $ = s => document.querySelector(s);
+  const NS = "http://www.w3.org/2000/svg";
+
+  function fmt(m, opts = {}) {
+    const v = state.units === "m" ? m : m * FT;
+    const dec = opts.dec != null ? opts.dec : (state.units === "m" && m % 1 && m < 1000 ? 1 : 0);
+    return v.toLocaleString("en-NZ", { maximumFractionDigits: dec, minimumFractionDigits: 0 }) + (opts.noUnit ? "" : (state.units === "m" ? " m" : " ft"));
+  }
+  function dur(min) {
+    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    if (h === 0) return m + " min";
+    return h + " h " + (m === 60 ? 0 : m) + " min";
+  }
+  function yearOf(d) { return d.yearText || String(d.year); }
+
+  /* ---------- Silhouettes ---------- */
+  function tiered(cx, y0, h, w, o) {
+    const top = y0 - h, bodyH = h * o.bf, yb = y0 - bodyH;
+    const L = [], R = [];
+    if (o.taper) {
+      L.push([cx - w * o.hw0, y0]);
+      for (let i = 1; i <= o.n; i++) {
+        const t = i / o.n, hw = w * (o.hw0 + (o.hw1 - o.hw0) * t), y = y0 - bodyH * t;
+        L.push([cx - hw, y]);
+        if (i < o.n) L.push([cx - hw * .9, y]);
+      }
+    } else {
+      const step = bodyH / o.n;
+      for (let i = 0; i < o.n; i++) {
+        const hw = w * (o.hw0 + (o.hw1 - o.hw0) * (o.n === 1 ? 0 : i / (o.n - 1)));
+        L.push([cx - hw, y0 - i * step]);
+        L.push([cx - hw, y0 - (i + 1) * step]);
+      }
+    }
+    for (const [x, y] of L) R.unshift([2 * cx - x, y]);
+    let pts = L.slice();
+    if (o.bf < 1) pts.push([cx - 1.6, yb], [cx, top], [cx + 1.6, yb]);
+    pts = pts.concat(R);
+    return `<polygon class="shape" points="${pts.map(p => p.map(n => n.toFixed(1)).join(",")).join(" ")}"/>`;
+  }
+  function silhouette(d, cx, y0, px, w) {
+    const h = d.h * px, top = y0 - h, o = d.o;
+    switch (d.s) {
+      case "spire":
+        if (d.built) {
+          // planned outline plus solid built portion
+          const full = tiered(cx, y0, h, w, o).replace('class="shape"', 'class="planned"');
+          const bh = d.built * px, frac = d.built / d.h;
+          const hwTop = w * (o.hw0 + (o.hw1 - o.hw0) * Math.min(1, frac / o.bf));
+          const built = `<polygon class="shape" points="${cx - w * o.hw0},${y0} ${cx - hwTop},${y0 - bh} ${cx + hwTop},${y0 - bh} ${cx + w * o.hw0},${y0}"/>`;
+          return full + built;
+        }
+        return tiered(cx, y0, h, w, o);
+      case "twist": {
+        const yb = y0 - h * .97;
+        return `<path class="shape" d="M${cx - w * .4},${y0} C${cx - w * .38},${y0 - h * .5} ${cx - w * .26},${y0 - h * .8} ${cx - w * .12},${yb} L${cx + w * .02},${top} L${cx + w * .16},${yb} C${cx + w * .3},${y0 - h * .75} ${cx + w * .42},${y0 - h * .45} ${cx + w * .4},${y0} Z"/>`;
+      }
+      case "clock": {
+        const pod = `<rect class="shape" x="${cx - w * .48}" y="${y0 - h * .2}" width="${w * .96}" height="${h * .2}"/>`;
+        const t = tiered(cx, y0 - h * .2 + .5, h * .8, w, { n: 3, bf: .78, hw0: .26, hw1: .14 });
+        return pod + t + `<circle class="cut" cx="${cx}" cy="${y0 - h * .66}" r="${Math.max(1.5, w * .08)}"/>`;
+      }
+      case "needle": {
+        const [pb, pt] = o.pod;
+        let s = `<polygon class="shape" points="${cx - w * .2},${y0} ${cx - w * .06},${y0 - h * pb} ${cx + w * .06},${y0 - h * pb} ${cx + w * .2},${y0}"/>`;
+        s += `<polygon class="shape" points="${cx - w * .07},${y0 - h * pb} ${cx - w * .26},${y0 - h * (pb + .03)} ${cx - w * .26},${y0 - h * (pt - .02)} ${cx - w * .08},${y0 - h * pt} ${cx + w * .08},${y0 - h * pt} ${cx + w * .26},${y0 - h * (pt - .02)} ${cx + w * .26},${y0 - h * (pb + .03)} ${cx + w * .07},${y0 - h * pb}"/>`;
+        s += `<polygon class="shape" points="${cx - w * .05},${y0 - h * pt} ${cx - 1.2},${top} ${cx + 1.2},${top} ${cx + w * .05},${y0 - h * pt}"/>`;
+        if (o.pod2) s += `<rect class="shape" x="${cx - w * .1}" y="${y0 - h * (o.pod2 + .02)}" width="${w * .2}" height="${h * .03}"/>`;
+        return s;
+      }
+      case "pagoda": {
+        let s = `<rect class="shape" x="${cx - w * .42}" y="${y0 - h * .05}" width="${w * .84}" height="${h * .05}"/>`;
+        s += `<polygon class="shape" points="${cx - w * .26},${y0 - h * .05} ${cx - w * .22},${y0 - h * .22} ${cx + w * .22},${y0 - h * .22} ${cx + w * .26},${y0 - h * .05}"/>`;
+        const segH = h * .07;
+        for (let i = 0; i < 8; i++) {
+          const yb = y0 - h * .22 - i * segH, yt = yb - segH + .4;
+          s += `<polygon class="shape" points="${cx - w * .2},${yb} ${cx - w * .3},${yt} ${cx + w * .3},${yt} ${cx + w * .2},${yb}"/>`;
+        }
+        const y8 = y0 - h * .22 - 8 * segH;
+        s += `<polygon class="shape" points="${cx - w * .16},${y8} ${cx - w * .1},${y0 - h * .86} ${cx - 1.3},${y0 - h * .86} ${cx},${top} ${cx + 1.3},${y0 - h * .86} ${cx + w * .1},${y0 - h * .86} ${cx + w * .16},${y8}"/>`;
+        return s;
+      }
+      case "twin": {
+        const o2 = { n: 4, bf: .82, hw0: .14, hw1: .05 };
+        return tiered(cx - w * .2, y0, h, w, o2) + tiered(cx + w * .2, y0, h, w, o2) +
+          `<rect class="shape" x="${cx - w * .1}" y="${y0 - h * .39}" width="${w * .2}" height="${Math.max(2, h * .015)}"/>`;
+      }
+      case "lattice": {
+        const d1 = `M${cx - w * .44},${y0} Q${cx - w * .14},${y0 - h * .3} ${cx - w * .05},${y0 - h * .8} L${cx - 1},${top} L${cx + 1},${top} L${cx + w * .05},${y0 - h * .8} Q${cx + w * .14},${y0 - h * .3} ${cx + w * .44},${y0} Z`;
+        const arch = `M${cx - w * .26},${y0} Q${cx},${y0 - h * .3} ${cx + w * .26},${y0} Z`;
+        return `<path class="shape" fill-rule="evenodd" d="${d1} ${arch}"/>`;
+      }
+      case "pyramid":
+        return `<polygon class="shape" points="${cx - w * .5},${y0} ${cx},${top} ${cx + w * .5},${y0}"/>`;
+      case "elcap":
+        return `<path class="shape rock" d="M${cx - w * .5},${y0} C${cx - w * .36},${y0 - h * .25} ${cx - w * .22},${y0 - h * .85} ${cx - w * .02},${top + 2} Q${cx + w * .06},${top - 1} ${cx + w * .12},${top + 4} C${cx + w * .2},${y0 - h * .7} ${cx + w * .1},${y0 - h * .35} ${cx + w * .24},${y0} Z"/>`;
+      case "dome":
+        return `<path class="shape rock" d="M${cx - w * .5},${y0} C${cx - w * .42},${y0 - h * .55} ${cx - w * .26},${top} ${cx + w * .02},${top} L${cx + w * .1},${top + 3} L${cx + w * .12},${y0 - h * .55} L${cx + w * .16},${y0} Z"/>`;
+    }
+    return "";
+  }
+
+  /* ---------- Chart ---------- */
+  function visible() {
+    const f = FILTERS.find(x => x.id === state.filter);
+    const list = DATA.filter(f.test);
+    if (state.sort === "desc") list.sort((a, b) => b.h - a.h);
+    else if (state.sort === "asc") list.sort((a, b) => a.h - b.h);
+    else list.sort((a, b) => a.year - b.year);
+    return list;
+  }
+  function niceStep(maxDisplay) {
+    const steps = [25, 50, 100, 200, 250, 500];
+    for (const s of steps) if (maxDisplay / s <= 7) return s;
+    return 1000;
+  }
+
+  function renderChart() {
+    const list = visible();
+    if (!list.some(d => d.id === state.sel)) state.sel = list[0].id;
+    const svg = $("#chart");
+    const scroller = $("#scroller");
+    const SLOT = 92, padL = 56, padR = 24, H = 500, y0 = H - 66, topPad = 34;
+    const slots = list.map(d => SLOT * (d.wide || 1));
+    const total = slots.reduce((a, b) => a + b, 0);
+    const W = Math.max(scroller.clientWidth || 800, padL + total + padR);
+    const maxM = Math.max(...list.map(d => d.h), byId[state.ref].h) * 1.06;
+    const px = (y0 - topPad) / maxM;
+    svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    let out = `<g class="grid">`;
+    const unitMax = state.units === "m" ? maxM : maxM * FT;
+    const step = niceStep(unitMax);
+    for (let v = 0; v <= unitMax; v += step) {
+      const m = state.units === "m" ? v : v / FT;
+      const y = y0 - m * px;
+      if (v > 0) out += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke-dasharray="2 4"/>`;
+      out += `<text x="${padL - 8}" y="${y + 3.5}" text-anchor="end">${v.toLocaleString("en-NZ")}</text>`;
+    }
+    out += `</g><text class="axis-unit" x="${padL - 8}" y="${topPad - 14}" text-anchor="end">${state.units === "m" ? "metres" : "feet"}</text>`;
+
+    let x = padL;
+    list.forEach((d, i) => {
+      const sw = slots[i], cx = x + sw / 2, w = SLOT * .62 * (d.wide || 1);
+      const top = y0 - d.h * px;
+      const sel = d.id === state.sel ? " sel" : "";
+      const hText = (d.approx ? "~" : "") + fmt(d.h, { dec: state.units === "m" && d.h % 1 ? 1 : 0 }) + (d.approxPlus ? "+" : "");
+      out += `<g class="slot${sel}${d.honnold ? " honnold" : ""}" data-id="${d.id}" tabindex="0" role="button" aria-label="${d.name}, ${hText}${d.built ? ", under construction" : ""}">`;
+      out += `<rect class="hit" x="${x + 2}" y="${topPad - 24}" width="${sw - 4}" height="${H - topPad + 20}" rx="6"/>`;
+      out += silhouette(d, cx, y0, px, w);
+      if (d.cat !== "rock") out += `<circle class="beacon" cx="${cx + (d.s === "twin" ? -w * .2 : 0)}" cy="${top}" r="2.4"/>` + (d.s === "twin" ? `<circle class="beacon" cx="${cx + w * .2}" cy="${top}" r="2.4"/>` : "");
+      out += `<text class="hlabel" x="${cx}" y="${top - 9}">${hText}</text>`;
+      if (d.built) out += `<text class="hlabel" x="${cx}" y="${y0 - d.built * px - 6}" style="fill:var(--muted)">${fmt(d.built)} built</text>`;
+      out += `<text class="nlabel" x="${cx}" y="${y0 + 18}">${d.label[0]}</text>`;
+      out += `<text class="nlabel" x="${cx}" y="${y0 + 32}" style="font-weight:400;fill:var(--muted)">${d.label[1]}</text>`;
+      if (d.honnold) out += `<text class="climb-tag" x="${cx}" y="${y0 + 50}">HONNOLD</text>`;
+      out += `</g>`;
+      x += sw;
+    });
+
+    out += `<line class="ground" x1="${padL}" x2="${W - padR}" y1="${y0}" y2="${y0}"/>`;
+    const ref = byId[state.ref], ry = y0 - ref.h * px;
+    out += `<line class="refline" x1="${padL}" x2="${W - padR}" y1="${ry}" y2="${ry}"/>`;
+    out += `<text class="reflabel" x="${W - padR}" y="${ry - 5}" text-anchor="end">${ref.name} ${fmt(ref.h)}</text>`;
+    svg.innerHTML = out;
+
+    svg.querySelectorAll(".slot").forEach(g => {
+      g.addEventListener("click", () => select(g.dataset.id));
+      g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(g.dataset.id); } });
+    });
+  }
+
+  /* ---------- Detail ---------- */
+  function renderDetail() {
+    const d = byId[state.sel], ref = byId[state.ref];
+    const ratio = d.h / ref.h;
+    const all = DATA.filter(x => x.cat !== "rock" && !x.built).sort((a, b) => b.h - a.h);
+    const rank = all.findIndex(x => x.id === d.id) + 1;
+    const hn = d.h / PACE;
+    const whole = Math.floor(ratio), part = ratio - whole;
+    let stack = "";
+    const n = Math.min(whole, 30);
+    for (let i = 0; i < n; i++) stack += `<i></i>`;
+    if (part > .02 && whole < 30) stack += `<i class="part" style="--p:${(part * 100).toFixed(0)}%"></i>`;
+
+    const pills = [];
+    pills.push(`<span class="pill">${d.cat === "rock" ? "Rock wall" : d.cat === "tower" ? "Tower or landmark" : "Skyscraper"}</span>`);
+    if (d.built) pills.push(`<span class="pill build">Under construction</span>`);
+    if (d.honnold) pills.push(`<span class="pill climb">Free soloed by Honnold</span>`);
+
+    const climb = CLIMBS.find(c => c.id === d.id);
+    const rows = [
+      [`Height in ${state.units === "m" ? "feet" : "metres"}`, (d.approx ? "about " : "") + (state.units === "m" ? Math.round(d.h * FT).toLocaleString("en-NZ") + " ft" : d.h.toLocaleString("en-NZ") + " m") + (d.approxPlus ? "+" : "")],
+      [`Compared with ${ref.name}`, d.id === ref.id ? "Same structure" : (ratio >= 1 ? ratio.toFixed(2) + " times as tall" : Math.round(ratio * 100) + "% of its height")],
+      ["Difference", d.id === ref.id ? "None" : (d.h >= ref.h ? fmt(d.h - ref.h) + " taller" : fmt(ref.h - d.h) + " shorter")]
+    ];
+    if (d.floors) rows.push(["Floors", (d.built ? "167 planned, 107 built" : d.floors)]);
+    if (rank && d.cat !== "rock") rows.push(["Rank among structures on this page", "#" + rank + " of " + all.length + " completed"]);
+    rows.push([climb ? "Honnold's actual time" : "At Honnold's Taipei 101 pace", climb ? dur(climb.min) : "about " + dur(hn)]);
+
+    $("#detail").innerHTML = `
+      <article class="sheet">
+        <div class="meta">${pills.join("")}</div>
+        <h2 class="dname">${d.name}</h2>
+        <div class="meta"><span>${d.city}</span><span>${yearOf(d)}</span></div>
+        <div class="bignum">${d.approx ? "~" : ""}${fmt(d.h, { noUnit: true })}${d.approxPlus ? "+" : ""}<small>${state.units === "m" ? "metres" : "feet"}${d.built ? " planned, " + fmt(d.built) + " built so far" : ""}</small></div>
+        <ul class="facts">${d.facts.map(f => `<li>${f}</li>`).join("")}</ul>
+      </article>
+      <aside class="sheet">
+        <span class="label">Measured against ${ref.name}</span>
+        <div class="stack" aria-hidden="true">${stack}</div>
+        <p class="note">${d.id === ref.id ? `${d.name} is the current reference.` : ratio >= 1 ? `Each bar is one ${ref.name}. ${d.name} equals about ${ratio.toFixed(1)} of them stacked.` : `${d.name} reaches ${Math.round(ratio * 100)}% of the way up ${ref.name}.`} Change the reference line above to compare against something else.</p>
+        <div class="stat-rows">${rows.map(r => `<div class="row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join("")}</div>
+        <p class="note">Honnold's Taipei 101 pace was about ${fmt(PACE, { dec: 1 })} of height per minute. Times for other structures are a straight-line estimate, not a prediction.</p>
+      </aside>`;
+  }
+
+  /* ---------- Climbs ---------- */
+  function renderClimbs() {
+    const maxSp = Math.max(...CLIMBS.map(c => c.h / c.min));
+    $("#climbs").innerHTML = CLIMBS.map(c => {
+      const sp = c.h / c.min;
+      return `<button class="climb" type="button" data-id="${c.id}">
+        <span class="label">${c.when}</span>
+        <h3>${c.title}</h3>
+        <dl class="kv">
+          <dt>Route</dt><dd>${c.route}</dd>
+          <dt>Height</dt><dd>${c.id === "taipei" ? "" : "~"}${fmt(c.h)}</dd>
+          <dt>Time</dt><dd>${dur(c.min)}</dd>
+        </dl>
+        <div class="speed">
+          <div class="row" style="padding:0;border:0"><span class="label">Vertical speed</span><span>${fmt(sp, { dec: 1 })} per min</span></div>
+          <div class="bar"><b style="width:${(sp / maxSp * 100).toFixed(0)}%"></b></div>
+        </div>
+        <p>${c.note}</p>
+      </button>`;
+    }).join("");
+    document.querySelectorAll(".climb").forEach(b => b.addEventListener("click", () => {
+      const d = byId[b.dataset.id];
+      if (!FILTERS.find(f => f.id === state.filter).test(d)) state.filter = "honnold";
+      renderControls();
+      select(b.dataset.id, true);
+    }));
+  }
+
+  /* ---------- Controls ---------- */
+  function renderControls() {
+    $("#filters").innerHTML = FILTERS.map(f => `<button class="chip" type="button" id="f-${f.id}" aria-pressed="${state.filter === f.id}" data-f="${f.id}">${f.text}</button>`).join("");
+    $("#units").innerHTML = [["m", "Metres"], ["ft", "Feet"]].map(([k, t]) => `<button class="chip" type="button" id="u-${k}" aria-pressed="${state.units === k}" data-u="${k}">${t}</button>`).join("");
+    $("#filters").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { state.filter = b.dataset.f; renderAll(); }));
+    $("#units").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
+      state.units = b.dataset.u;
+      try { localStorage.setItem("skyline-units", state.units); } catch (e) {}
+      renderAll();
+    }));
+  }
+  function renderAll() { renderControls(); renderChart(); renderDetail(); renderClimbs(); }
+
+  function centerOn(id, behavior) {
+    const g = document.querySelector(`.slot[data-id="${id}"]`);
+    if (!g) return null;
+    const sc = $("#scroller"), bb = g.getBBox();
+    const target = bb.x + bb.width / 2 - sc.clientWidth / 2;
+    if (target > 0 || sc.scrollLeft > 0) sc.scrollTo({ left: Math.max(0, target), behavior });
+    return g;
+  }
+  function select(id, scroll) {
+    state.sel = id;
+    renderChart(); renderDetail();
+    const g = centerOn(id, "smooth");
+    if (g) g.focus({ preventScroll: true });
+    if (scroll) $("#scroller").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const refSel = $("#ref");
+  refSel.innerHTML = DATA.slice().sort((a, b) => b.h - a.h).map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+  refSel.value = state.ref;
+  refSel.addEventListener("change", () => { state.ref = refSel.value; renderChart(); renderDetail(); });
+  try { const so = localStorage.getItem("skyline-sort"); if (["asc", "desc", "year"].includes(so)) state.sort = so; } catch (e) {}
+  $("#sort").value = state.sort;
+  $("#sort").addEventListener("change", e => {
+    state.sort = e.target.value;
+    try { localStorage.setItem("skyline-sort", state.sort); } catch (err) {}
+    renderChart();
+  });
+
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
+  renderAll();
+  centerOn(state.sel, "auto");
+})();
+</script>
+
+</body></html>
